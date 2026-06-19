@@ -2,6 +2,8 @@
 
 HERMES Research Operating System.
 
+GitHub repository: [o-yutaka/HORS](https://github.com/o-yutaka/HORS)
+
 ## Repository Structure
 
 ```
