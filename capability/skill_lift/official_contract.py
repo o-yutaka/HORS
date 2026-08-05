@@ -92,6 +92,10 @@ SKILL_LIFT_OFFICIAL_CONTRACT: dict[str, Any] = {
             "id": "CONFIRM_SUBMISSION_LIMIT",
             "detail": "The competition overview says two submissions per day and separate track submissions, while hackathon rules say one submission per team; confirm the platform's active track-specific behavior before using the final slot.",
         },
+        {
+            "id": "CONFIRM_KAGGLE_PUBLIC_CODE_DISCLOSURE",
+            "detail": "Competition-related code already made public on GitHub must also be made available to all participants through the Kaggle competition forum, notebook, resource, or submitted public writeup before relying on it for final compliance.",
+        },
     ],
 }
 
