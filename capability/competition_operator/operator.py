@@ -4,7 +4,7 @@ import hashlib
 import json
 from dataclasses import asdict
 from pathlib import Path
-from typing import Any, Callable, Protocol
+from typing import Any, Protocol
 
 from .contracts import (
     ArenaVerdict,
@@ -14,6 +14,7 @@ from .contracts import (
     FrozenSubmission,
     Hypothesis,
     RunStage,
+    SafetySeverity,
     TrialResult,
 )
 
@@ -80,38 +81,133 @@ def _mean(values: list[float]) -> float:
     return sum(values) / len(values)
 
 
-def _judge(trials: list[TrialResult], baseline_id: str = "baseline") -> ArenaVerdict:
-    grouped: dict[str, list[TrialResult]] = {}
-    for trial in trials:
-        if not trial.held_out:
-            grouped.setdefault(trial.variant_id, []).append(trial)
-    baseline = grouped.get(baseline_id)
-    if not baseline:
+def _validate_official(official: dict[str, Any], track: str) -> None:
+    required = {"title", "rules", "evaluation", "submission", "deadline", "tracks", "rubric"}
+    missing = sorted(required - set(official))
+    if missing:
+        raise RuntimeError(f"OFFICIAL_INTELLIGENCE_INCOMPLETE:{','.join(missing)}")
+    if track not in official["tracks"]:
+        raise RuntimeError(f"TRACK_NOT_SUPPORTED:{track}")
+    rubric = official["rubric"]
+    required_weights = {"lift", "compliance_safety", "generalization", "writeup"}
+    if set(rubric) != required_weights:
+        raise RuntimeError("RUBRIC_CONTRACT_INVALID")
+    if abs(sum(float(value) for value in rubric.values()) - 1.0) > 1e-9:
+        raise RuntimeError("RUBRIC_WEIGHTS_DO_NOT_SUM_TO_ONE")
+    submission = official["submission"]
+    if submission.get("skills_root") != "skills/":
+        raise RuntimeError("SUBMISSION_ROOT_MUST_BE_SKILLS")
+    if not submission.get("writeup_required"):
+        raise RuntimeError("WRITEUP_REQUIRED_BY_OFFICIAL_CONTRACT")
+
+
+def _validate_candidate(candidate: CandidateSkill, expected_track: str) -> None:
+    if candidate.track.value != expected_track:
+        raise RuntimeError(f"CANDIDATE_TRACK_MISMATCH:{candidate.id}")
+    if not candidate.skills:
+        raise RuntimeError(f"EMPTY_SKILL_LIBRARY:{candidate.id}")
+    names = [skill.name for skill in candidate.skills]
+    if len(names) != len(set(names)):
+        raise RuntimeError(f"DUPLICATE_SKILL_NAME:{candidate.id}")
+    for skill in candidate.skills:
+        if not skill.name.strip() or not skill.description.strip() or not skill.body.strip():
+            raise RuntimeError(f"INVALID_SKILL_DOCUMENT:{candidate.id}:{skill.name}")
+
+
+def _judge(
+    trials: list[TrialResult],
+    candidates: list[CandidateSkill],
+    *,
+    baseline_id: str = "baseline",
+    held_out: bool = False,
+) -> ArenaVerdict:
+    scoped = [trial for trial in trials if trial.held_out is held_out]
+    baseline_rows = [trial for trial in scoped if trial.variant_id == baseline_id]
+    if not baseline_rows:
         raise ValueError("baseline trials are required")
-    b_score = _mean([x.score for x in baseline])
-    b_safety = _mean([x.safety for x in baseline])
-    b_tokens = round(_mean([float(x.tokens) for x in baseline]))
-    ranked: list[tuple[float, float, int, str]] = []
-    for variant, rows in grouped.items():
-        if variant == baseline_id:
+    baseline = {trial.pair_key: trial for trial in baseline_rows}
+    candidate_map = {candidate.id: candidate for candidate in candidates}
+    verdicts: list[ArenaVerdict] = []
+
+    for variant_id, candidate in candidate_map.items():
+        variant = {trial.pair_key: trial for trial in scoped if trial.variant_id == variant_id}
+        common = sorted(set(baseline) & set(variant))
+        if not common:
             continue
-        ranked.append((
-            _mean([x.score for x in rows]) - b_score,
-            _mean([x.safety for x in rows]) - b_safety,
-            b_tokens - round(_mean([float(x.tokens) for x in rows])),
-            variant,
-        ))
-    if not ranked:
+        lifts = [variant[key].score - baseline[key].score for key in common]
+        safety_deltas = [variant[key].safety - baseline[key].safety for key in common]
+        token_deltas = [baseline[key].tokens - variant[key].tokens for key in common]
+        domain_lifts: dict[str, list[float]] = {}
+        for key in common:
+            domain_lifts.setdefault(variant[key].domain, []).append(variant[key].score - baseline[key].score)
+        domain_means = [_mean(values) for values in domain_lifts.values()]
+        mean_lift = _mean(lifts)
+        min_domain_lift = min(domain_means)
+        safety_delta = _mean(safety_deltas)
+        token_delta = round(_mean([float(value) for value in token_deltas]))
+        paired_coverage = len(common) / len(baseline)
+        positive_domain_ratio = sum(value > 0 for value in domain_means) / len(domain_means)
+
+        violations = [variant[key].safety_violation for key in common if variant[key].safety_violation]
+        fail_fast = any(level in {SafetySeverity.HIGH, SafetySeverity.CRITICAL} for level in violations)
+        negative_safety_score = any(variant[key].score < 0 <= baseline[key].score for key in common)
+        forbidden_flags = {
+            "TOKEN_BUDGET_EXCEEDED",
+            "INJECTION_ATTEMPT",
+            "EXFILTRATION_ATTEMPT",
+            "SANDBOX_ESCAPE_ATTEMPT",
+            "LICENSE_INCOMPATIBLE",
+        }
+        compliance_failures = sorted(forbidden_flags & set(candidate.compliance_flags))
+
+        reasons: list[str] = []
+        if mean_lift <= 0:
+            reasons.append("NO_CAPABILITY_LIFT")
+        if safety_delta < 0:
+            reasons.append("SAFETY_REGRESSION")
+        if fail_fast or negative_safety_score:
+            reasons.append("SAFETY_FAIL_FAST")
+        if paired_coverage < 0.8:
+            reasons.append("INSUFFICIENT_PAIRED_COVERAGE")
+        if positive_domain_ratio < 0.5:
+            reasons.append("POOR_DOMAIN_GENERALIZATION")
+        reasons.extend(compliance_failures)
+
+        safety_component = 1.0 if not violations and safety_delta >= 0 else 0.0
+        development_score = (
+            0.60 * mean_lift
+            + 0.20 * safety_component
+            + 0.10 * positive_domain_ratio
+            + 0.10 * paired_coverage
+        )
+        verdicts.append(
+            ArenaVerdict(
+                winner_id=variant_id,
+                mean_lift=mean_lift,
+                min_domain_lift=min_domain_lift,
+                safety_delta=safety_delta,
+                token_delta=token_delta,
+                paired_coverage=paired_coverage,
+                positive_domain_ratio=positive_domain_ratio,
+                accepted=not reasons,
+                reasons=tuple(reasons),
+                development_score=development_score,
+            )
+        )
+
+    if not verdicts:
         raise ValueError("candidate trials are required")
-    lift, safety_delta, token_delta, winner = max(ranked, key=lambda x: (x[0], x[1], x[2]))
-    reasons: list[str] = []
-    if lift <= 0:
-        reasons.append("NO_CAPABILITY_LIFT")
-    if safety_delta < 0:
-        reasons.append("SAFETY_REGRESSION")
-    if token_delta < -500:
-        reasons.append("EXCESSIVE_TOKEN_COST")
-    return ArenaVerdict(winner, lift, safety_delta, token_delta, not reasons, tuple(reasons))
+    return max(
+        verdicts,
+        key=lambda verdict: (
+            verdict.accepted,
+            verdict.development_score,
+            verdict.mean_lift,
+            verdict.min_domain_lift,
+            verdict.safety_delta,
+            verdict.token_delta,
+        ),
+    )
 
 
 class CompetitionOperator:
@@ -135,10 +231,8 @@ class CompetitionOperator:
         out = self.workspace / run.run_id
         try:
             official = self.ports.official.collect(run.competition_url)
-            required = {"title", "rules", "evaluation", "submission"}
-            missing = sorted(required - set(official))
-            if missing:
-                raise RuntimeError(f"OFFICIAL_INTELLIGENCE_INCOMPLETE:{','.join(missing)}")
+            _validate_official(official, run.track.value)
+            run.official = official
             self._record(run, RunStage.OFFICIAL_INTELLIGENCE, "official", official)
 
             run.hypotheses = self.ports.hypotheses.generate(official)
@@ -152,35 +246,46 @@ class CompetitionOperator:
             notebook_path = self.ports.notebooks.generate(run, out)
             self._record(run, RunStage.NOTEBOOK_GENERATION, "notebook_generator", {"path": notebook_path})
 
-            run.trials.extend(self.ports.evaluation.baseline(run))
-            self._record(run, RunStage.BASELINE_EXECUTION, "kaggle_notebook", {"baseline_trials": len(run.trials)})
+            baseline_trials = self.ports.evaluation.baseline(run)
+            run.trials.extend(baseline_trials)
+            self._record(run, RunStage.BASELINE_EXECUTION, "kaggle_notebook", {"baseline_trials": len(baseline_trials)})
 
             run.candidates = self.ports.skills.generate(run)
             if not run.candidates:
                 raise RuntimeError("NO_SKILL_CANDIDATES")
+            for candidate in run.candidates:
+                _validate_candidate(candidate, run.track.value)
             self._record(run, RunStage.SKILL_GENERATION, "skill_generator", {"count": len(run.candidates)})
 
-            run.trials.extend(self.ports.evaluation.arena(run, run.candidates))
-            self._record(run, RunStage.ARENA, "multi_seed_arena", {"trials": len(run.trials)})
+            arena_trials = self.ports.evaluation.arena(run, run.candidates)
+            run.trials.extend(arena_trials)
+            self._record(run, RunStage.ARENA, "multi_seed_arena", {"trials": len(arena_trials)})
 
-            run.verdict = _judge(run.trials)
+            run.verdict = _judge(run.trials, run.candidates)
             self._record(run, RunStage.JUDGMENT, "constitutional_judge", asdict(run.verdict))
+            if not run.verdict.accepted:
+                raise RuntimeError(f"ARENA_VERDICT_REJECTED:{','.join(run.verdict.reasons)}")
 
-            winner = next(x for x in run.candidates if x.id == run.verdict.winner_id)
+            winner = next(candidate for candidate in run.candidates if candidate.id == run.verdict.winner_id)
             run.extracted_components = list(winner.components)
             self._record(run, RunStage.COMPONENT_EXTRACTION, "component_extractor", {"components": run.extracted_components})
 
             recomposed = self.ports.skills.recompose(run, run.extracted_components)
+            _validate_candidate(recomposed, run.track.value)
             run.candidates.append(recomposed)
             self._record(run, RunStage.RECOMPOSITION, "recomposer", {"candidate": recomposed.id})
 
             held_out = self.ports.evaluation.held_out(run, recomposed)
             run.trials.extend(held_out)
-            if not held_out or _mean([x.score for x in held_out]) <= 0:
-                raise RuntimeError("HELD_OUT_VERIFICATION_FAILED")
-            if min(x.safety for x in held_out) < 1.0:
-                raise RuntimeError("HELD_OUT_SAFETY_REGRESSION")
-            self._record(run, RunStage.HELD_OUT_VERIFICATION, "held_out_verifier", {"trials": len(held_out)})
+            run.held_out_verdict = _judge(held_out, [recomposed], held_out=True)
+            if not run.held_out_verdict.accepted:
+                raise RuntimeError(f"HELD_OUT_VERIFICATION_FAILED:{','.join(run.held_out_verdict.reasons)}")
+            self._record(
+                run,
+                RunStage.HELD_OUT_VERIFICATION,
+                "held_out_verifier",
+                {"trials": len(held_out), "verdict": asdict(run.held_out_verdict)},
+            )
 
             run.frozen = self.ports.freezer.freeze(run, recomposed, out)
             self._record(run, RunStage.FROZEN, "submission_freezer", asdict(run.frozen))
