@@ -142,7 +142,11 @@ def test_full_pipeline_freezes_exact_skills_zip(tmp_path: Path):
     assert result.frozen is not None
     assert Path(result.frozen.bundle_path).exists()
     assert result.frozen.submission_ready is False
-    assert set(result.frozen.final_submit_blockers) == {"CONFIRM_ACTIVE_DEADLINE", "CONFIRM_SUBMISSION_LIMIT"}
+    assert set(result.frozen.final_submit_blockers) == {
+        "CONFIRM_ACTIVE_DEADLINE",
+        "CONFIRM_SUBMISSION_LIMIT",
+        "CONFIRM_KAGGLE_PUBLIC_CODE_DISCLOSURE",
+    }
     with zipfile.ZipFile(result.frozen.bundle_path) as archive:
         names = archive.namelist()
     assert names == ["skills/black-safe-verify/SKILL.md"]
@@ -153,7 +157,11 @@ def test_manual_confirmations_release_final_submit_gate(tmp_path: Path):
     run = CompetitionRun(
         "run-confirmed",
         "https://www.kaggle.com/competitions/skill-lift",
-        manual_confirmations={"CONFIRM_ACTIVE_DEADLINE", "CONFIRM_SUBMISSION_LIMIT"},
+        manual_confirmations={
+            "CONFIRM_ACTIVE_DEADLINE",
+            "CONFIRM_SUBMISSION_LIMIT",
+            "CONFIRM_KAGGLE_PUBLIC_CODE_DISCLOSURE",
+        },
     )
     result = CompetitionOperator(_ports(), tmp_path).execute(run)
     assert result.stage is RunStage.FROZEN
