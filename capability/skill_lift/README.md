@@ -4,6 +4,8 @@ This capability specializes the generic Competition Operator for `https://www.ka
 
 BLACK remains the controller. HORS supplies reusable contracts and ports. Kaggle Notebooks or another BenchFlow-capable environment produce measured public-development evidence. The organizer remains the only authority for the private bench-mix.
 
+This capability is licensed under MIT. Final and experimental skill libraries stay private until submission. Competition-related code already published on GitHub must also be disclosed to all participants through the Kaggle competition forum, notebook, resource, or submitted public writeup before the final compliance gate is confirmed.
+
 ## Official contract encoded
 
 - Two separate tracks: `static` and `meta`
@@ -92,7 +94,7 @@ Exit codes:
 - `2`: blocked by missing/invalid evidence, unsafe behavior, no lift, poor generalization, or contract failure
 - `3`: package frozen, but final manual confirmation is still required
 
-Immediately before the final upload, re-check the active Kaggle deadline and the active submission-count behavior, then rerun with:
+Immediately before the final upload, re-check the active Kaggle deadline, the active submission-count behavior, and confirm that public competition code is available through Kaggle. Then rerun with:
 
 ```bash
 python -m capability.skill_lift \
@@ -100,7 +102,8 @@ python -m capability.skill_lift \
   --track static \
   --run-id static-final \
   --confirm-active-deadline \
-  --confirm-submission-limit
+  --confirm-submission-limit \
+  --confirm-kaggle-public-code-disclosure
 ```
 
 ## Outputs
@@ -127,3 +130,5 @@ The Kaggle submission ZIP contains only the required `skills/` tree. The audit Z
 - Recomposition must preserve the winning components
 - Held-out development evidence must pass the same gates
 - Writeup must remain within the official word limit
+- Active deadline and submission behavior must be re-confirmed immediately before final upload
+- Public GitHub competition code must also be disclosed through Kaggle before the disclosure confirmation is set
