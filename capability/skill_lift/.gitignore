@@ -1,0 +1,7 @@
+workspace/
+runs/
+frozen-*/
+submission-*.zip
+audit-*.zip
+WRITEUP-*.md
+*.jsonl
