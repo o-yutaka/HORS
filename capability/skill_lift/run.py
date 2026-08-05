@@ -31,6 +31,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--competition-url", default="https://www.kaggle.com/competitions/skill-lift")
     parser.add_argument("--confirm-active-deadline", action="store_true")
     parser.add_argument("--confirm-submission-limit", action="store_true")
+    parser.add_argument("--confirm-kaggle-public-code-disclosure", action="store_true")
     return parser
 
 
@@ -46,6 +47,8 @@ def main(argv: list[str] | None = None) -> int:
         confirmations.add("CONFIRM_ACTIVE_DEADLINE")
     if args.confirm_submission_limit:
         confirmations.add("CONFIRM_SUBMISSION_LIMIT")
+    if args.confirm_kaggle_public_code_disclosure:
+        confirmations.add("CONFIRM_KAGGLE_PUBLIC_CODE_DISCLOSURE")
 
     ports = OperatorPorts(
         official=SkillLiftOfficialIntelligence(),
