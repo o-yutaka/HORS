@@ -98,6 +98,7 @@ def test_cli_reaches_frozen_exact_submission(tmp_path: Path) -> None:
             "static-final",
             "--confirm-active-deadline",
             "--confirm-submission-limit",
+            "--confirm-kaggle-public-code-disclosure",
         ]
     )
     assert exit_code == 0
