@@ -1,0 +1,9 @@
+{
+  "source": "e-stat",
+  "survey": "建設工事受注動態統計調査",
+  "datasets": [
+    {"dataset_id":"000040475580","label":"受注高時系列","period":"2026-05"},
+    {"dataset_id":"construction-orders-context","label":"地域・業種・公共民間等の関連表","period":"2026-05","status":"official-page-identified"}
+  ],
+  "policy": "Keep public benchmark artifacts separate from customer data; record provenance and SHA-256 for every retrieved artifact."
+}
