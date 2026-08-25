@@ -30,6 +30,10 @@ build/
 # Service runtime artifacts
 service/runtime/
 
+# Public-data runtime artifacts (raw data stays outside git; manifests are reproducible)
+.public-data/raw/
+.public-data/manifests/
+
 # Logs (runtime artifacts; structure tracked via logs/.gitkeep)
 logs/runs/
 logs/promotions/
