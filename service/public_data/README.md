@@ -21,6 +21,20 @@ Research infrastructure for reproducible public construction-data benchmarks. It
 - No customer data is written under this directory.
 - Bulk raw datasets stay outside Git; manifests and hashes are tracked.
 
+## e-Stat first artifact
+
+The first official target is the `2026-05` “受注高時系列” file, `stat_infid=000040475580`, published 2026-07-10 14:00 JST by the Ministry of Land, Infrastructure, Transport and Tourism. The official page exposes an Excel download and an API interface requiring an application ID. citeturn776310view0
+
+Run:
+
+```bash
+npm run public-data:fetch:estat
+```
+
+The downloader starts from the official dataset page, discovers the current Excel URL from that page, saves the raw artifact under `service/runtime/public_data/`, and emits `provenance.json` with retrieval time, source URL, resolved download URL, byte size and SHA-256. Raw artifacts are gitignored.
+
+The current environment used for development has outbound DNS restrictions, so retrieval itself must be executed from a network-enabled development/CI environment. The implementation does not fabricate a fallback artifact.
+
 ## Normalization
 
 `normalize.js` converts already-downloaded JSON rows into the public benchmark event contract. Network access and credentials remain outside the normalizer.
@@ -28,13 +42,5 @@ Research infrastructure for reproducible public construction-data benchmarks. It
 Every normalized event carries dataset ID, source URL, retrieval timestamp and artifact SHA-256 provenance. `benchmark-schema.json` defines the contract.
 
 Fixture: `sample-estat-input.json`.
-
-## Planned CLI
-
-```bash
-npm run public-data:manifest
-npm run public-data:fetch -- --source mlit_dpf
-npm run public-data:normalize -- --source mlit_dpf
-```
 
 The next commercial-data milestone is one real public artifact → verified manifest → normalized benchmark dataset. Public benchmark output must never be presented as customer-observed evidence.
