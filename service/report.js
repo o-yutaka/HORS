@@ -4,6 +4,9 @@ export function buildDiagnosticReport(state, meta = {}) {
   const top = state.decisionDebts[0];
   const totalPressure = Number(state.decisionDebts.reduce((sum, d) => sum + d.pressure_total, 0).toFixed(2));
   const totalEstimatedCost = state.decisionDebts.reduce((sum, d) => sum + d.estimated_counterfactual_cost, 0);
+  const baseline = state.simulation.find((x) => x.key === "A");
+  const top1 = state.simulation.find((x) => x.key === "B");
+  const top3 = state.simulation.find((x) => x.key === "C");
   return {
     report_type: "decision_debt_diagnostic",
     generated_at: new Date().toISOString(),
@@ -45,12 +48,24 @@ export function buildDiagnosticReport(state, meta = {}) {
       dependency_depth: d.dependency_depth,
       estimated_counterfactual_cost: d.estimated_counterfactual_cost
     })),
+    counterfactual_effect: {
+      assumption: "処理したDecision Debtは初日から負債残高から除外し、残存案件のみ時間経過させる決定論的シナリオ。",
+      all_vs_top1: baseline && top1 ? {
+        high_pressure_avoided_at_30d: baseline.final_high_pressure_count - top1.final_high_pressure_count,
+        estimated_cost_reduction: baseline.estimated_counterfactual_cost_30d - top1.estimated_counterfactual_cost_30d
+      } : null,
+      all_vs_top3: baseline && top3 ? {
+        high_pressure_avoided_at_30d: baseline.final_high_pressure_count - top3.final_high_pressure_count,
+        estimated_cost_reduction: baseline.estimated_counterfactual_cost_30d - top3.estimated_counterfactual_cost_30d
+      } : null
+    },
     simulation: state.simulation,
     evidence: {
       source: "deterministic-engine",
       core_scoring: "deterministic",
       llm_used_for_core_scoring: false,
       value_status: "computed_estimate",
+      customer_observed_metrics: null,
       note: "Pressure・下流負荷・反実仮想コストは入力データと決定論的ルールから算出した診断推定値。顧客実績ではない。実績値はExecution Evidenceとして別途記録する。"
     }
   };
