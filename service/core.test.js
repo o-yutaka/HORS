@@ -22,9 +22,10 @@ test("top decision has explainable breakdown", () => {
   assert.equal(typeof top.estimated_counterfactual_cost, "number");
 });
 
-test("30 day simulator advances daily, preserves deterministic scenarios, and returns valid state", () => {
+test("30 day simulator advances daily and preserves valid deterministic state", () => {
   const input = seedEvents.map((e, i) => ({ ...e, id: String(i) }));
   const ranked = processEvents(input).decisionDebts;
+  assert.ok(ranked.every((d) => Number.isFinite(d.downstream_block_count) && Number.isFinite(d.impact_cost)));
   const a = simulate30Days(ranked);
   const b = simulate30Days(ranked);
   assert.deepEqual(a, b);
@@ -49,7 +50,7 @@ test("30 day simulator advances daily, preserves deterministic scenarios, and re
     assert.equal(scenario.downstream_block_count_30d, scenario.daily[30].downstream_block_count);
   }
   assert.ok(a[0].final_high_pressure_count >= 0 && a[0].final_high_pressure_count <= ranked.length);
-  assert.ok(HIGH_PRESSURE_THRESHOLD === 70);
+  assert.equal(HIGH_PRESSURE_THRESHOLD, 70);
 });
 
 test("CSV parser handles quoted commas and changes candidate set", () => {
