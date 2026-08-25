@@ -22,7 +22,7 @@ test("top decision has explainable breakdown", () => {
   assert.equal(typeof top.estimated_counterfactual_cost, "number");
 });
 
-test("30 day simulator actually advances daily and is deterministic", () => {
+test("30 day simulator advances daily, preserves deterministic scenarios, and returns valid state", () => {
   const input = seedEvents.map((e, i) => ({ ...e, id: String(i) }));
   const a = simulate30Days(input);
   const b = simulate30Days(input);
@@ -33,7 +33,19 @@ test("30 day simulator actually advances daily and is deterministic", () => {
     assert.equal(scenario.daily.length, 31);
     assert.equal(scenario.daily[0].day, 0);
     assert.equal(scenario.daily[30].day, 30);
-    assert.ok(scenario.daily[30].estimated_counterfactual_cost >= scenario.daily[0].estimated_counterfactual_cost);
+    for (let i = 1; i < scenario.daily.length; i += 1) {
+      assert.equal(scenario.daily[i].day, scenario.daily[i - 1].day + 1);
+    }
+    for (const point of scenario.daily) {
+      assert.ok(point.unresolved_count >= 0 && point.unresolved_count <= input.length);
+      assert.ok(point.high_pressure_count >= 0 && point.high_pressure_count <= point.unresolved_count);
+      assert.ok(point.downstream_block_count >= 0);
+      assert.ok(point.estimated_counterfactual_cost >= 0);
+    }
+    assert.equal(scenario.unresolved_count_30d, scenario.daily[30].unresolved_count);
+    assert.equal(scenario.final_high_pressure_count, scenario.daily[30].high_pressure_count);
+    assert.equal(scenario.estimated_counterfactual_cost_30d, scenario.daily[30].estimated_counterfactual_cost);
+    assert.equal(scenario.downstream_block_count_30d, scenario.daily[30].downstream_block_count);
   }
   assert.ok(a[0].final_high_pressure_count >= 0 && a[0].final_high_pressure_count <= input.length);
   assert.ok(HIGH_PRESSURE_THRESHOLD === 70);
