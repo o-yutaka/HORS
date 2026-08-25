@@ -1,0 +1,42 @@
+{
+  "version": 1,
+  "updated_at": "2026-08-25",
+  "sources": [
+    {
+      "id": "mlit_dpf",
+      "name": "国土交通データプラットフォーム",
+      "authority": "国土交通省",
+      "kind": "api",
+      "official_url": "https://www.mlit.go.jp/tec/content/001901915.pdf",
+      "status": "verified_documented",
+      "credential_required": true,
+      "output": ["json", "metadata", "file"],
+      "uses": ["project_metadata", "construction_context", "benchmark_events"],
+      "notes": "Current user API is documented; endpoint domain changed in 2026. Resolve the current endpoint from official documentation at runtime rather than hard-coding a legacy domain."
+    },
+    {
+      "id": "estat_construction_orders",
+      "name": "建設工事受注動態統計調査",
+      "authority": "総務省/e-Stat・国土交通省",
+      "kind": "api_or_download",
+      "official_url": "https://www.e-stat.go.jp/stat-search/files?toukei=00600130",
+      "status": "verified_documented",
+      "credential_required": true,
+      "output": ["xml", "json", "csv"],
+      "uses": ["regional_prior", "work_type_prior", "time_series_context"],
+      "notes": "Aggregate statistics are benchmark/context data, not individual customer decisions."
+    },
+    {
+      "id": "mlit_ppi",
+      "name": "国土交通省 PPI / 発注関連情報",
+      "authority": "国土交通省",
+      "kind": "web_and_documents",
+      "official_url": "https://www.mlit.go.jp/gobuild/gobuild_fr6_000004.html",
+      "status": "verified_documented",
+      "credential_required": false,
+      "output": ["html", "pdf"],
+      "uses": ["procurement_lifecycle", "contract_change_events", "performance_events"],
+      "notes": "Public pages expose procurement outlooks, notices, bid/contract results, contract changes and performance information."
+    }
+  ]
+}
