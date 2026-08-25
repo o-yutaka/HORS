@@ -1,7 +1,7 @@
 # PROGRESS
 
 ## Current Stage
-Prototype → Demo → Diagnostic
+Prototype → Demo
 
 ## Product
 現場データOS / Decision Debt Intelligence
@@ -11,19 +11,38 @@ Reality → Decision Candidate → Decision Debt → Pressure → Priority → C
 
 ## Completed
 - Existing HORS repository inspected
-- Old HROS README replaced with 現場データOS product positioning
-- Commercial-first direction established
-- Repository retained as source repository while GitHub display-name rename remains a platform-operation gap
+- Old HROS positioning replaced with 現場データOS
+- Commercial-first product definition established
+- Legacy Competition Intelligence PR #1 isolated/closed as legacy
+- Deterministic Decision Debt / Pressure / Priority core implemented
+- Seed dataset with 12 field events added
+- 30-day counterfactual simulator implemented
+- CSV import path implemented
+- Supervisor-first demo UI and API implemented
+- Role-aware API response boundaries implemented for v1 roles
+- Deterministic pressure weights externalized to config/pressure_weights.json
+- Core tests added for deterministic ranking, seed volume, explainability, simulation, and CSV import
+- Sales demo guide and commercial offer hypothesis added
+
+## Verified by repository inspection
+- package.json uses zero-dependency Node runtime scripts
+- npm run dev → node service/api.js
+- npm run seed → node service/seed.js
+- npm test → node --test service/core.test.js
+- API includes /api/health, /api/state, /api/recalculate, /api/import-csv
+
+## External verification limitation
+- Local git clone/test execution was attempted but this environment could not resolve github.com DNS.
+- Therefore local runtime execution is still pending on a networked developer machine.
 
 ## Next
-1. Remove/isolating legacy competition-specific implementation that conflicts with the 現場データOS north star
-2. Build deterministic Decision Debt core
-3. Build Pressure Engine v2
-4. Build Dependency Graph and Priority Ranking
-5. Build 30-day Counterfactual Simulation
-6. Build Supervisor one-screen demo
-7. Create diagnostic report flow
-8. Run first paid-pilot workflow
+1. Run npm install / npm run seed / npm test locally
+2. Run 5-minute demo and fix runtime issues found
+3. Add real diagnostic report export
+4. Add customer-data handling procedure
+5. Collect first real field dataset
+6. Convert first diagnostic into paid pilot
+7. Record Before/After evidence
 
 ## Non-Goals
 - Do not rebuild ANDPAD/KANNA-style construction management
