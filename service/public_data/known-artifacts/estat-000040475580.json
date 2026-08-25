@@ -1,0 +1,11 @@
+{
+  "dataset_id": "estat-000040475580",
+  "source_id": "estat_construction_orders",
+  "title": "建設工事受注動態統計調査 受注高時系列",
+  "survey_month": "2026-05",
+  "published_at": "2026-07-10T14:00:00+09:00",
+  "source_url": "https://www.e-stat.go.jp/stat-search/files?stat_infid=000040475580",
+  "format": "xlsx",
+  "status": "officially_identified_not_retrieved_here",
+  "notes": "Official e-Stat page confirms the Excel artifact and API interface. The development shell cannot reach e-Stat because outbound DNS is restricted, so no synthetic artifact or fake hash is recorded."
+}
