@@ -5,14 +5,9 @@
   "description": "Decision Debt Intelligence Service for field operations",
   "type": "module",
   "scripts": {
-    "dev": "tsx service/api.ts",
-    "start": "tsx service/api.ts",
-    "seed": "tsx service/seed.ts",
-    "test": "tsx --test service/**/*.test.ts",
-    "typecheck": "tsc --noEmit"
-  },
-  "dependencies": {
-    "typescript": "^5.6.3",
-    "tsx": "^4.19.2"
+    "dev": "node service/api.js",
+    "start": "node service/api.js",
+    "seed": "node service/seed.js",
+    "test": "node --test service/core.test.js"
   }
 }
