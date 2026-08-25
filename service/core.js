@@ -1,6 +1,8 @@
 import { PRESSURE_WEIGHTS } from "./config.js";
 
 export const DEFAULT_WEIGHTS = PRESSURE_WEIGHTS;
+export const HIGH_PRESSURE_THRESHOLD = 70;
+export const SIMULATION_DAYS = 30;
 const clamp = (n, min = 0, max = 100) => Math.max(min, Math.min(max, n));
 
 export function normalizeEvent(event, index = 0) {
@@ -70,18 +72,72 @@ export function scoreDecisionDebt(d, weights = DEFAULT_WEIGHTS) {
   const dependencyFactor = 1 + Math.min(d.dependency_depth, 6) / 10;
   const uncertaintyFactor = 1 + clamp(d.uncertainty_score) / 200;
   const total = clamp(weighted * delayFactor * downstreamFactor * dependencyFactor * uncertaintyFactor);
-  const counterfactualCost = Math.round(d.impact_cost * delayFactor * downstreamFactor);
-  return { ...d, pressure_total: Number(total.toFixed(2)), breakdown, counterfactual_cost: counterfactualCost, reason: `${d.delay_days}日停滞・下流${d.downstream_block_count}件・依存深度${d.dependency_depth}段を考慮すると、先に処理する優先度が高い。` };
+  const estimatedCounterfactualCost = Math.round(d.impact_cost * delayFactor * downstreamFactor);
+  return {
+    ...d,
+    pressure_total: Number(total.toFixed(2)),
+    breakdown,
+    estimated_counterfactual_cost: estimatedCounterfactualCost,
+    reason: `${d.delay_days}日停滞・下流${d.downstream_block_count}件・依存深度${d.dependency_depth}段を考慮すると、先に処理する優先度が高い。`
+  };
 }
 
 export function rankDecisionDebts(debts, weights = DEFAULT_WEIGHTS) {
-  return debts.map((d) => scoreDecisionDebt(d, weights)).sort((a, b) => (b.pressure_total - a.pressure_total) || (b.downstream_block_count - a.downstream_block_count) || a.id.localeCompare(b.id)).map((d, i) => ({ ...d, rank: i + 1 }));
+  return debts
+    .map((d) => scoreDecisionDebt(d, weights))
+    .sort((a, b) => (b.pressure_total - a.pressure_total) || (b.downstream_block_count - a.downstream_block_count) || a.id.localeCompare(b.id))
+    .map((d, i) => ({ ...d, rank: i + 1 }));
+}
+
+function projectDebtAtDay(d, day, weights) {
+  return scoreDecisionDebt({ ...d, delay_days: d.delay_days + day }, weights);
+}
+
+function simulateScenario(label, startingDebts, weights, processedIds = new Set()) {
+  const remaining = startingDebts.filter((d) => !processedIds.has(d.id));
+  const daily = [];
+  let previousHigh = 0;
+  let crossedHighPressureCount = 0;
+
+  for (let day = 0; day <= SIMULATION_DAYS; day += 1) {
+    const scored = remaining.map((d) => projectDebtAtDay(d, day, weights));
+    const highPressureCount = scored.filter((d) => d.pressure_total >= HIGH_PRESSURE_THRESHOLD).length;
+    crossedHighPressureCount += Math.max(0, highPressureCount - previousHigh);
+    previousHigh = highPressureCount;
+    daily.push({
+      day,
+      unresolved_count: scored.length,
+      high_pressure_count: highPressureCount,
+      downstream_block_count: scored.reduce((sum, d) => sum + d.downstream_block_count, 0),
+      estimated_counterfactual_cost: scored.reduce((sum, d) => sum + d.estimated_counterfactual_cost, 0)
+    });
+  }
+
+  const final = daily[daily.length - 1];
+  return {
+    key: label.key,
+    label: label.label,
+    simulation_days: SIMULATION_DAYS,
+    unresolved_count_30d: final.unresolved_count,
+    final_high_pressure_count: final.high_pressure_count,
+    crossed_high_pressure_count: crossedHighPressureCount,
+    estimated_counterfactual_cost_30d: final.estimated_counterfactual_cost,
+    downstream_block_count_30d: final.downstream_block_count,
+    daily
+  };
 }
 
 export function simulate30Days(debts, weights = DEFAULT_WEIGHTS) {
   const ranked = rankDecisionDebts(debts, weights);
-  const scenarios = [["A", "全放置", () => ranked], ["B", "Top 1処理", () => ranked.slice(1)], ["C", "Top 3処理", () => ranked.slice(3)], ["D", "ランダム処理", () => ranked.filter((_, i) => i % 3 !== 0)]];
-  return scenarios.map(([key, label, pick]) => { const remaining = pick(); return { key, label, unresolved_count_30d: remaining.length, explosion_events: remaining.filter((d) => d.pressure_total >= 70).length, impact_cost: remaining.reduce((s, d) => s + d.counterfactual_cost, 0), downstream_block_count: remaining.reduce((s, d) => s + d.downstream_block_count, 0) }; });
+  const top1 = new Set(ranked.slice(0, 1).map((d) => d.id));
+  const top3 = new Set(ranked.slice(0, 3).map((d) => d.id));
+  const everyThird = new Set(ranked.filter((_, i) => i % 3 === 0).map((d) => d.id));
+  return [
+    simulateScenario({ key: "A", label: "全放置" }, ranked, weights),
+    simulateScenario({ key: "B", label: "Top 1処理" }, ranked, weights, top1),
+    simulateScenario({ key: "C", label: "Top 3処理" }, ranked, weights, top3),
+    simulateScenario({ key: "D", label: "一定間隔で処理" }, ranked, weights, everyThird)
+  ];
 }
 
 export function processEvents(events, weights = DEFAULT_WEIGHTS) {
@@ -91,9 +147,33 @@ export function processEvents(events, weights = DEFAULT_WEIGHTS) {
   return { events: normalized, decisionDebts: ranked, simulation: simulate30Days(ranked, weights) };
 }
 
+function parseCsvLine(line) {
+  const cells = [];
+  let cell = "";
+  let quoted = false;
+  for (let i = 0; i < line.length; i += 1) {
+    const ch = line[i];
+    const next = line[i + 1];
+    if (ch === '"' && quoted && next === '"') { cell += '"'; i += 1; continue; }
+    if (ch === '"') { quoted = !quoted; continue; }
+    if (ch === "," && !quoted) { cells.push(cell.trim()); cell = ""; continue; }
+    cell += ch;
+  }
+  if (quoted) throw new Error("CSV_UNCLOSED_QUOTE");
+  cells.push(cell.trim());
+  return cells;
+}
+
 export function csvToEvents(csv) {
   const lines = String(csv).trim().split(/\r?\n/).filter(Boolean);
   if (lines.length < 2) return [];
-  const headers = lines.shift().split(",").map((x) => x.trim());
-  return lines.map((line, i) => { const parts = line.split(","); const obj = Object.fromEntries(headers.map((h, j) => [h, parts[j]?.trim() ?? ""])); return normalizeEvent({ ...obj, id: obj.id || `CSV-${i + 1}` }, i); });
+  const headers = parseCsvLine(lines.shift()).map((x) => x.trim());
+  const required = ["date", "site_id", "event_type", "status", "note"];
+  const missing = required.filter((key) => !headers.includes(key));
+  if (missing.length) throw new Error(`CSV_HEADER_MISSING:${missing.join(",")}`);
+  return lines.map((line, i) => {
+    const parts = parseCsvLine(line);
+    const obj = Object.fromEntries(headers.map((h, j) => [h, parts[j] ?? ""]));
+    return normalizeEvent({ ...obj, id: obj.id || `CSV-${i + 1}` }, i);
+  });
 }
