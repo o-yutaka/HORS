@@ -30,6 +30,8 @@ Reality → Decision Candidate → Decision Debt → Pressure → Priority → C
 - Official public-data registry added for MLIT Data Platform, e-Stat construction orders, and MLIT procurement lifecycle sources
 - Public-data ingestion boundary added; raw bulk data is gitignored and provenance manifests are reproducible
 - Public-data manifest CLI added
+- Public benchmark event schema and deterministic normalizer added
+- Public benchmark normalization fixture and test added
 
 ## Public Data Acquisition Targets
 1. MLIT Data Platform user API: project/construction metadata and related infrastructure context
@@ -40,7 +42,8 @@ Public records are benchmark/context signals. They are never asserted to be cust
 
 ## Verification
 - Core tests cover deterministic ranking, seed volume, explainability, daily 30-day simulation, CSV edge cases, and required headers
-- CI executes `npm run verify` (tests + Node syntax checks + public-data manifest generation)
+- Public-data normalizer test covers deterministic IDs and provenance
+- CI executes `npm run verify` (core + public-data tests, syntax checks, manifest generation)
 - Full runtime execution from this environment remains unconfirmed because external GitHub/DNS access is unavailable to the execution shell
 
 ## Commercial Gate
@@ -49,7 +52,7 @@ Required evidence: one real field dataset, Top Pressure, downstream impact, coun
 
 ## Next
 1. Run local `npm run verify` and `npm run dev`
-2. Acquire first P0 public dataset samples and generate provenance manifests
+2. Acquire first P0 public dataset sample and generate provenance manifest
 3. Normalize public procurement/project records into benchmark events
 4. Run public-data benchmark without mixing customer data
 5. Run the 5-minute demo against seed + benchmark context
