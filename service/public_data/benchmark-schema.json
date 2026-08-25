@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Public Benchmark Event",
+  "type": "object",
+  "required": ["event_id","source_id","source_kind","observed_at","metric","value","provenance"],
+  "properties": {
+    "event_id": {"type":"string"},
+    "source_id": {"type":"string"},
+    "source_kind": {"const":"public_benchmark"},
+    "observed_at": {"type":"string"},
+    "geography": {"type":["string","null"]},
+    "work_type": {"type":["string","null"]},
+    "metric": {"type":"string"},
+    "value": {"type":"number"},
+    "unit": {"type":["string","null"]},
+    "provenance": {
+      "type":"object",
+      "required":["dataset_id","source_url","retrieved_at","artifact_sha256"],
+      "properties": {
+        "dataset_id":{"type":"string"},
+        "source_url":{"type":"string"},
+        "retrieved_at":{"type":"string"},
+        "artifact_sha256":{"type":"string","pattern":"^[a-f0-9]{64}$"}
+      }
+    }
+  }
+}
