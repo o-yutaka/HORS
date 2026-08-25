@@ -27,6 +27,9 @@ node_modules/
 dist/
 build/
 
+# Service runtime artifacts
+service/runtime/
+
 # Logs (runtime artifacts; structure tracked via logs/.gitkeep)
 logs/runs/
 logs/promotions/
