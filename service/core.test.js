@@ -24,8 +24,9 @@ test("top decision has explainable breakdown", () => {
 
 test("30 day simulator advances daily, preserves deterministic scenarios, and returns valid state", () => {
   const input = seedEvents.map((e, i) => ({ ...e, id: String(i) }));
-  const a = simulate30Days(input);
-  const b = simulate30Days(input);
+  const ranked = processEvents(input).decisionDebts;
+  const a = simulate30Days(ranked);
+  const b = simulate30Days(ranked);
   assert.deepEqual(a, b);
   assert.deepEqual(a.map(x => x.key), ["A", "B", "C", "D"]);
   for (const scenario of a) {
@@ -37,17 +38,17 @@ test("30 day simulator advances daily, preserves deterministic scenarios, and re
       assert.equal(scenario.daily[i].day, scenario.daily[i - 1].day + 1);
     }
     for (const point of scenario.daily) {
-      assert.ok(point.unresolved_count >= 0 && point.unresolved_count <= input.length);
+      assert.ok(point.unresolved_count >= 0 && point.unresolved_count <= ranked.length);
       assert.ok(point.high_pressure_count >= 0 && point.high_pressure_count <= point.unresolved_count);
-      assert.ok(point.downstream_block_count >= 0);
-      assert.ok(point.estimated_counterfactual_cost >= 0);
+      assert.ok(Number.isFinite(point.downstream_block_count) && point.downstream_block_count >= 0);
+      assert.ok(Number.isFinite(point.estimated_counterfactual_cost) && point.estimated_counterfactual_cost >= 0);
     }
     assert.equal(scenario.unresolved_count_30d, scenario.daily[30].unresolved_count);
     assert.equal(scenario.final_high_pressure_count, scenario.daily[30].high_pressure_count);
     assert.equal(scenario.estimated_counterfactual_cost_30d, scenario.daily[30].estimated_counterfactual_cost);
     assert.equal(scenario.downstream_block_count_30d, scenario.daily[30].downstream_block_count);
   }
-  assert.ok(a[0].final_high_pressure_count >= 0 && a[0].final_high_pressure_count <= input.length);
+  assert.ok(a[0].final_high_pressure_count >= 0 && a[0].final_high_pressure_count <= ranked.length);
   assert.ok(HIGH_PRESSURE_THRESHOLD === 70);
 });
 
