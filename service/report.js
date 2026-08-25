@@ -1,15 +1,29 @@
+import { DEFAULT_WEIGHTS, HIGH_PRESSURE_THRESHOLD, SIMULATION_DAYS } from "./core.js";
+
 export function buildDiagnosticReport(state, meta = {}) {
   const top = state.decisionDebts[0];
+  const totalPressure = Number(state.decisionDebts.reduce((sum, d) => sum + d.pressure_total, 0).toFixed(2));
+  const totalEstimatedCost = state.decisionDebts.reduce((sum, d) => sum + d.estimated_counterfactual_cost, 0);
   return {
     report_type: "decision_debt_diagnostic",
     generated_at: new Date().toISOString(),
+    engine: {
+      name: "Decision Debt Engine",
+      version: "decision-debt-v1.1",
+      high_pressure_threshold: HIGH_PRESSURE_THRESHOLD,
+      simulation_days: SIMULATION_DAYS,
+      weights: DEFAULT_WEIGHTS
+    },
     site: meta.site ?? "demo-site",
     customer: meta.customer ?? "demo-customer",
     summary: {
       decision_debt_count: state.decisionDebts.length,
+      total_pressure: totalPressure,
+      high_pressure_count: state.decisionDebts.filter((d) => d.pressure_total >= HIGH_PRESSURE_THRESHOLD).length,
       average_delay_days: state.decisionDebts.length
         ? Number((state.decisionDebts.reduce((s, d) => s + d.delay_days, 0) / state.decisionDebts.length).toFixed(1))
         : 0,
+      estimated_counterfactual_cost_total: totalEstimatedCost,
       top_pressure: top?.pressure_total ?? 0,
       top_decision: top?.title ?? null,
       downstream_block_count: top?.downstream_block_count ?? 0
@@ -20,7 +34,7 @@ export function buildDiagnosticReport(state, meta = {}) {
       pressure_total: top.pressure_total,
       breakdown: top.breakdown,
       reason: top.reason,
-      counterfactual_cost: top.counterfactual_cost
+      estimated_counterfactual_cost: top.estimated_counterfactual_cost
     } : null,
     decision_debt_top10: state.decisionDebts.slice(0, 10).map(d => ({
       rank: d.rank,
@@ -29,13 +43,15 @@ export function buildDiagnosticReport(state, meta = {}) {
       pressure_total: d.pressure_total,
       downstream_block_count: d.downstream_block_count,
       dependency_depth: d.dependency_depth,
-      counterfactual_cost: d.counterfactual_cost
+      estimated_counterfactual_cost: d.estimated_counterfactual_cost
     })),
     simulation: state.simulation,
     evidence: {
       source: "deterministic-engine",
+      core_scoring: "deterministic",
       llm_used_for_core_scoring: false,
-      note: "数値は入力データと決定論的ルールから計算。実績値ではなく診断時点の推定値。"
+      value_status: "computed_estimate",
+      note: "Pressure・下流負荷・反実仮想コストは入力データと決定論的ルールから算出した診断推定値。顧客実績ではない。実績値はExecution Evidenceとして別途記録する。"
     }
   };
 }
