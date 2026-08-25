@@ -1,7 +1,7 @@
 # SERVICE STATUS
 
 ## Current Stage
-Prototype / Demo preparation
+Prototype → Demo
 
 ## Product
 現場データOS — Decision Debt Intelligence
@@ -13,10 +13,22 @@ Prototype / Demo preparation
 Decision Debt現場診断
 
 ## Demo Status
-未完成
+完成（repository implementation complete; local execution pending networked environment verification）
 
 ## Pilot Status
 未実施
+
+## Core Status
+- Deterministic Decision Debt Engine: 実装済み
+- Pressure Engine v2: 実装済み
+- External pressure weights: 実装済み
+- Priority Ranking: 実装済み
+- 30-day Counterfactual Simulation: 実装済み
+- CSV import: 実装済み
+- Supervisor one-screen UI: 実装済み
+- Role-aware API scope: v1実装済み
+- Diagnostic report JSON: 実装済み
+- Core acceptance tests: 実装済み
 
 ## Latest Customer Evidence
 - Decision Debt: 未取得
@@ -30,12 +42,18 @@ Decision Debt現場診断
 - Reason to Buy: 「記録は今のまま。今日決めるべきことだけ出す。」
 
 ## Next Action
-Decision Debt / Pressure / Simulation の最小実装と5分デモを完成させる。
+1. ネットワーク接続可能な開発環境で npm test / npm run seed / npm run dev を実行
+2. 5分デモでランタイム問題を潰す
+3. 初回現場データを受領
+4. 有料Pilotへ接続
 
 ## Unresolved Decisions
-- HORSのGitHub表示名を現場データOSへ変更するプラットフォーム操作
+- GitHubのrepository display nameを `genba-data-os` に変更するプラットフォーム操作
 - 最初の実データ提供企業
 - 顧客ヒアリングによる価格更新
+
+## Evidence Rule
+実測していないBefore/Afterや売上・削減時間は記録しない。
 
 ## North Star Deviation
 なし
