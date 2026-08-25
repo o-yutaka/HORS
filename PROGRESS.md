@@ -1,7 +1,7 @@
 # PROGRESS
 
 ## Current Stage
-Prototype → Demo → Diagnostic → Paid Pilot preparation
+Prototype → Demo → Diagnostic → Paid Pilot preparation → Public benchmark acquisition
 
 ## Product
 現場データOS / Decision Debt Accounting
@@ -27,10 +27,20 @@ Reality → Decision Candidate → Decision Debt → Pressure → Priority → C
 - GitHub CI workflow aligned with zero-dependency `npm run verify`
 - Verification tests expanded for simulation determinism, CSV edge cases, and estimate semantics
 - Competitive positioning refined around Decision Debt Accounting / 判断負債会計
+- Official public-data registry added for MLIT Data Platform, e-Stat construction orders, and MLIT procurement lifecycle sources
+- Public-data ingestion boundary added; raw bulk data is gitignored and provenance manifests are reproducible
+- Public-data manifest CLI added
+
+## Public Data Acquisition Targets
+1. MLIT Data Platform user API: project/construction metadata and related infrastructure context
+2. e-Stat construction orders: monthly/regional/work-type priors and time-series context
+3. MLIT PPI / procurement records: forecast → notice → bid/contract result → contract change → performance events
+
+Public records are benchmark/context signals. They are never asserted to be customer Decision Debt.
 
 ## Verification
 - Core tests cover deterministic ranking, seed volume, explainability, daily 30-day simulation, CSV edge cases, and required headers
-- CI executes `npm run verify` (tests + Node syntax checks)
+- CI executes `npm run verify` (tests + Node syntax checks + public-data manifest generation)
 - Full runtime execution from this environment remains unconfirmed because external GitHub/DNS access is unavailable to the execution shell
 
 ## Commercial Gate
@@ -39,11 +49,14 @@ Required evidence: one real field dataset, Top Pressure, downstream impact, coun
 
 ## Next
 1. Run local `npm run verify` and `npm run dev`
-2. Run the 5-minute demo against seed data
-3. Run first real Decision Debt diagnostic
-4. Convert diagnostic into paid Pilot
-5. Record before/after evidence as observed customer metrics
-6. Automate only repeated customer-valued work
+2. Acquire first P0 public dataset samples and generate provenance manifests
+3. Normalize public procurement/project records into benchmark events
+4. Run public-data benchmark without mixing customer data
+5. Run the 5-minute demo against seed + benchmark context
+6. Run first real Decision Debt diagnostic
+7. Convert diagnostic into paid Pilot
+8. Record before/after evidence as observed customer metrics
+9. Automate only repeated customer-valued work
 
 ## Non-Goals
 - Do not rebuild ANDPAD/KANNA-style construction management
