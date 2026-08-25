@@ -32,11 +32,21 @@ Reality → Decision Candidate → Decision Debt → Pressure → Priority → C
 - Public-data manifest CLI added
 - Public benchmark event schema and deterministic normalizer added
 - Public benchmark normalization fixture and test added
+- Executable e-Stat artifact downloader added for dataset `000040475580`
+- Official e-Stat artifact metadata recorded separately from retrieved artifacts
 
 ## Public Data Acquisition Targets
 1. MLIT Data Platform user API: project/construction metadata and related infrastructure context
 2. e-Stat construction orders: monthly/regional/work-type priors and time-series context
 3. MLIT PPI / procurement records: forecast → notice → bid/contract result → contract change → performance events
+
+## Current Verified Public Artifact
+- e-Stat dataset: `000040475580`
+- Title: 建設工事受注動態統計調査 受注高時系列
+- Survey month: 2026-05
+- Published: 2026-07-10 14:00 JST
+- Official page: https://www.e-stat.go.jp/stat-search/files?stat_infid=000040475580
+- Status: officially identified; raw artifact not retrieved in this shell because outbound DNS is restricted
 
 Public records are benchmark/context signals. They are never asserted to be customer Decision Debt.
 
@@ -51,9 +61,9 @@ Open issue: #2 — first paid Decision Debt diagnostic
 Required evidence: one real field dataset, Top Pressure, downstream impact, counterfactual, one processed decision, before/after, customer feedback, price objection.
 
 ## Next
-1. Run local `npm run verify` and `npm run dev`
-2. Acquire first P0 public dataset sample and generate provenance manifest
-3. Normalize public procurement/project records into benchmark events
+1. In a network-enabled environment, run `npm run public-data:fetch:estat`
+2. Run the provenance manifest and verify SHA-256
+3. Convert the retrieved workbook into benchmark JSON rows
 4. Run public-data benchmark without mixing customer data
 5. Run the 5-minute demo against seed + benchmark context
 6. Run first real Decision Debt diagnostic
